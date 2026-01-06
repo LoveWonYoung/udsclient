@@ -1,0 +1,8 @@
+github.com/LoveWonYoung/canio v0.0.0-20260106140245-74480e26e9c1 h1:PfkNhijN/WGGBsnEQaGf4MScjIiJMf51SJoAsAQxtvw=
+github.com/LoveWonYoung/canio v0.0.0-20260106140245-74480e26e9c1/go.mod h1:+AWX3QIAA/KCDxLFd1vW0rj8FbgMbR7grGOhP/Y+7h8=
+github.com/LoveWonYoung/canio v0.0.0-20260106142517-19aa9919bf23 h1:kMS6u6tVehkSR1NMcJHIXKAJ98cROVIxGf292AAoZaE=
+github.com/LoveWonYoung/canio v0.0.0-20260106142517-19aa9919bf23/go.mod h1:+AWX3QIAA/KCDxLFd1vW0rj8FbgMbR7grGOhP/Y+7h8=
+github.com/LoveWonYoung/isotp v1.0.6 h1:IAz/LA9zE1lcFSTCkVcl94AC3Rh7nMdMa3Cqcadjs+w=
+github.com/LoveWonYoung/isotp v1.0.6/go.mod h1:apO4UC2CM5kOarocKra4f+r+OrxQZilCfpKQuv8BJT4=
+github.com/LoveWonYoung/lintp v0.0.0-20260106135410-b758a4cc3594 h1:sXZ9JiegP+h+NvHpBWUiiSY9grk2kna6z3xW70uCzMA=
+github.com/LoveWonYoung/lintp v0.0.0-20260106135410-b758a4cc3594/go.mod h1:Kr6UTMTmsFrmzpBKD/u2tEvQhbXDjXo59u83xo3M+cc=
