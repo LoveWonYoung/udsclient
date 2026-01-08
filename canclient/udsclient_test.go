@@ -1,4 +1,4 @@
-package udsclient
+package canclient
 
 import (
 	"context"
