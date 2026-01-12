@@ -133,6 +133,57 @@ func (c *UDSClient) IsClosed() bool {
 	return c.closed
 }
 
+// SetAddress updates the ISO-TP addressing for subsequent requests.
+func (c *UDSClient) SetAddress(addr *tp.Address) error {
+	if addr == nil {
+		return errors.New("address cannot be nil")
+	}
+	c.reqMu.Lock()
+	defer c.reqMu.Unlock()
+
+	if c.IsClosed() {
+		return errors.New("uds client is closed")
+	}
+
+	c.tll.SetAddress(addr)
+	return nil
+}
+
+// Send sends a physical request without waiting for a response.
+func (c *UDSClient) Send(payload []byte) error {
+	return c.SendPhysical(payload)
+}
+
+// SendPhysical sends a physical request without waiting for a response.
+func (c *UDSClient) SendPhysical(payload []byte) error {
+	return c.send(payload, tp.Physical, 0)
+}
+
+// SendWithTimeout sends a physical request without waiting for a response.
+func (c *UDSClient) SendWithTimeout(payload []byte, timeout time.Duration) error {
+	return c.send(payload, tp.Physical, timeout)
+}
+
+// SendFunctional sends a functional request without waiting for a response.
+func (c *UDSClient) SendFunctional(payload []byte) error {
+	return c.send(payload, tp.Functional, 0)
+}
+
+// SendFunctionalWithTimeout sends a functional request without waiting for a response.
+func (c *UDSClient) SendFunctionalWithTimeout(payload []byte, timeout time.Duration) error {
+	return c.send(payload, tp.Functional, timeout)
+}
+
+// Drain discards any queued responses without blocking.
+func (c *UDSClient) Drain() (int, error) {
+	return c.drain(0)
+}
+
+// DrainWithTimeout discards any queued responses, waiting up to the timeout.
+func (c *UDSClient) DrainWithTimeout(timeout time.Duration) (int, error) {
+	return c.drain(timeout)
+}
+
 // Request sends a physical request with default timing.
 func (c *UDSClient) Request(payload []byte) ([]byte, error) {
 	return c.RequestPhysical(payload)
@@ -166,6 +217,62 @@ func (c *UDSClient) RequestFunctionalWithTimeout(payload []byte, timeout time.Du
 // RequestWithContext sends a physical request with context-aware timeout and retries.
 func (c *UDSClient) RequestWithContext(ctx context.Context, payload []byte, opts RequestOptions) ([]byte, error) {
 	return c.requestWithContext(ctx, payload, opts, tp.Physical)
+}
+
+func (c *UDSClient) send(payload []byte, targetType uint32, timeout time.Duration) error {
+	if len(payload) == 0 {
+		return errors.New("payload cannot be empty")
+	}
+
+	c.reqMu.Lock()
+	defer c.reqMu.Unlock()
+
+	if c.IsClosed() {
+		return errors.New("uds client is closed")
+	}
+
+	if timeout <= 0 {
+		timeout = defaultTimeout
+	}
+
+	return c.tll.Send(payload, targetType, timeout)
+}
+
+func (c *UDSClient) drain(timeout time.Duration) (int, error) {
+	c.reqMu.Lock()
+	defer c.reqMu.Unlock()
+
+	if c.IsClosed() {
+		return 0, errors.New("uds client is closed")
+	}
+
+	count := 0
+	if timeout <= 0 {
+		for {
+			if _, ok := c.tll.Recv(false, 0); !ok {
+				break
+			}
+			count++
+		}
+		return count, nil
+	}
+
+	deadline := time.Now().Add(timeout)
+	for {
+		remaining := time.Until(deadline)
+		if remaining <= 0 {
+			break
+		}
+		wait := remaining
+		if wait > defaultRecvPoll {
+			wait = defaultRecvPoll
+		}
+		if _, ok := c.tll.Recv(true, wait); ok {
+			count++
+			continue
+		}
+	}
+	return count, nil
 }
 
 func (c *UDSClient) requestWithContext(ctx context.Context, payload []byte, opts RequestOptions, targetType uint32) ([]byte, error) {
