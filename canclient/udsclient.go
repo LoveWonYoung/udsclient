@@ -17,6 +17,8 @@ const (
 	defaultRetryDelay     = 100 * time.Millisecond
 	defaultRecvPoll       = 20 * time.Millisecond
 	defaultPendingTimeout = 0
+	// Small window to flush any late responses after a timeout so they don't leak into the next request.
+	defaultLateFlushWindow = 100 * time.Millisecond
 )
 
 // RequestOptions defines timeouts and retry behavior for UDS requests.
@@ -354,7 +356,32 @@ func (c *UDSClient) requestWithContext(ctx context.Context, payload []byte, opts
 		}
 	}
 
+	// Best-effort flush to prevent late responses from leaking into the next request.
+	c.flushLateResponses(defaultLateFlushWindow)
 	return nil, fmt.Errorf("uds request timed out after %d attempt(s)", opts.MaxRetries+1)
+}
+
+// flushLateResponses drains the receive queue for a short window to avoid leaking
+// late responses into subsequent requests. It must be called with reqMu held.
+func (c *UDSClient) flushLateResponses(window time.Duration) {
+	if window <= 0 {
+		return
+	}
+	deadline := time.Now().Add(window)
+	for {
+		remaining := time.Until(deadline)
+		if remaining <= 0 {
+			return
+		}
+		wait := remaining
+		if wait > defaultRecvPoll {
+			wait = defaultRecvPoll
+		}
+		if _, ok := c.tll.Recv(true, wait); !ok {
+			// If nothing is pending during this slice, keep looping until the window expires.
+			continue
+		}
+	}
 }
 
 func normalizeOptions(opts RequestOptions) RequestOptions {
