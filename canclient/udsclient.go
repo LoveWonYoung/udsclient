@@ -337,7 +337,8 @@ func (c *UDSClient) requestWithContext(ctx context.Context, payload []byte, opts
 					retry = true
 					break
 				}
-				return nil, err
+				// Return the ECU's negative response payload alongside the error so callers can inspect NRC bytes.
+				return resp, err
 			}
 			return resp, nil
 		}
